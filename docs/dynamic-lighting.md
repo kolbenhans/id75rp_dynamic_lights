@@ -4,6 +4,20 @@ This fork uses dynamic keycode-aware RGB lighting.
 
 Instead of assigning colors to fixed LED positions, colors are assigned to keycodes. This means that when you remap a key in Vial, the color follows the assigned function automatically.
 
+## Enabling Dynamic Lighting
+
+> [!IMPORTANT]
+> The Dynamic Lighting engine only runs while the RGB Matrix effect
+> **Direct Control** is active.
+
+To enable it in Vial:
+
+1. Open Vial
+2. Navigate to **Lighting**
+3. Select **Direct Control** as the active RGB Matrix effect
+
+All other RGB effects (Rainbow, Splash, Solid Color, etc.) will override the Dynamic Lighting engine.
+
 ## Adding a new color
 
 Colors are defined in `keymaps/vial/dynamic_lights.c`.
@@ -93,3 +107,5 @@ Examples:
 After changing the source code, the firmware must be rebuilt and flashed again.
 
 Changes made in Vial to the keymap are detected automatically by the dynamic lighting engine, but changes to colors or lighting rules require recompiling the firmware.
+
+
