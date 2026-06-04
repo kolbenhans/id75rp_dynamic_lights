@@ -33,3 +33,6 @@ See [Dynamic Lighting Guide](docs/dynamic-lighting.md) for color and key rule cu
 2. Open Vial
 3. Select **Lighting → Direct Control**
 4. Enjoy dynamic keycode-aware RGB lighting
+
+
+preconfigured and very colorful testfile (uf2) can be found [Here](testversion_uf2/readme.md)
