@@ -22,6 +22,10 @@
 #define L(n)         LAYER_MASK(n)
 #define L_RANGE(a,b) (((1UL << ((b) - (a) + 1)) - 1) << (a))
 
+#define BLINK_1HZ(color) (((timer_read32() / 600) % 2) ? (color) : CLR_OFF)
+#define BLINK_2HZ(color) (((timer_read32() / 200) % 2) ? (color) : CLR_OFF)
+#define BLINK_CHECK_INTERVAL_MS 100
+
 // replacing Direct Control with our key --> color effect
 #define MY_CUSTOM_RGB_MODE        45
 
@@ -32,6 +36,7 @@ enum { // color ids
     CLR_YELLOW,
     CLR_PINK,
     CLR_GREEN,
+    CLR_DARKGREEN,
     CLR_LIGHTGREEN,
     CLR_LEMONGREEN,
     CLR_BLUE,
@@ -60,6 +65,7 @@ static const rgb_color_t color_palette[] = {
     [CLR_YELLOW]      = { 255, 210,   0 },
     [CLR_PINK]        = { 255,   0, 128 },
     [CLR_GREEN]       = {   0, 255,   0 },
+    [CLR_DARKGREEN]   = {   0,  51,  25 },
     [CLR_LIGHTGREEN]  = {  51, 255, 153 },
     [CLR_LEMONGREEN]  = { 153, 255,  51 },
     [CLR_BLUE]        = {   0,  80, 255 },
@@ -218,6 +224,35 @@ static uint8_t color_for_keycode(uint16_t keycode, uint8_t layer) {
     if (keycode == TD(2)) return CLR_GREY;
     if (keycode == TD(3)) return CLR_GREY;
 
+//    if (keycode == EE_CLR) {
+//        return BLINK_2HZ(CLR_RED);
+//    }
+//
+//    if (keycode == QK_BOOT) {
+//        return BLINK_1HZ(CLR_ORANGE);
+//    }
+
+    if (keycode == EE_CLR) {
+        //fast: (timer_read32() / 400) % 2
+        //slower: (timer_read32() / 600) % 2
+        //even slower: (timer_read32() / 800) % 2
+        return (timer_read32() / 800) % 2
+            ? CLR_RED
+            : CLR_DARKORANGE;
+    }
+
+    if (keycode == QK_BOOT) {
+        return (timer_read32() / 800) % 2
+            ? CLR_ORANGE
+            : CLR_DARKORANGE;
+    }
+
+    if (keycode == QK_REBOOT) {
+        return (timer_read32() / 800) % 2
+            ? CLR_GREEN
+            : CLR_DARKGREEN;
+    }
+
     if (keycode == KC_CAPS) {
         return host_keyboard_led_state().caps_lock ? CLR_WHITE : CLR_OFF;
     }
@@ -319,7 +354,8 @@ static void render_keycode_lighting_cached(void) {
         return;
     }
 
-    if (timer_elapsed32(keymap_check_timer) >= KEYMAP_CHECK_INTERVAL_MS) {
+    if (timer_elapsed32(keymap_check_timer) >= BLINK_CHECK_INTERVAL_MS) {
+        
         keymap_check_timer = timer_read32();
 
         uint8_t current_layer = get_highest_layer(layer_state);
@@ -382,10 +418,6 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 
     last_rgb_mode = current_rgb_mode;
 
-    if (rgb_matrix_get_mode() != MY_CUSTOM_RGB_MODE) {
-        return false;
-    }
-
     if (!startup_done) {
         uint16_t startup_delay = startup_from_mode_switch ? 0 : STARTUP_DELAY_MS;
 
@@ -398,12 +430,18 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
         }
 
         uint32_t elapsed = timer_elapsed32(startup_timer);
-        uint16_t startup_step = startup_from_mode_switch ? STARTUP_SWITCH_STEP_MS : STARTUP_STEP_MS;
+
+        uint16_t startup_step =
+            startup_from_mode_switch
+                ? STARTUP_SWITCH_STEP_MS
+                : STARTUP_STEP_MS;
+
         uint8_t head = elapsed / startup_step;
 
         if (head > KEY_LED_COUNT + STARTUP_TAIL) {
             startup_done = true;
             startup_from_mode_switch = false;
+
             clear_all_leds();
             lighting_cache_initialized = false;
             return false;
@@ -425,7 +463,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
             }
 
             uint8_t hue = (elapsed / 8) + (pos * 10);
-            uint8_t value = 255 - (tail * (255 / STARTUP_TAIL));
+            uint8_t value = 255 - ((uint16_t)tail * 120 / STARTUP_TAIL);
 
             HSV hsv = { hue, 255, value };
             RGB rgb = hsv_to_rgb(hsv);
