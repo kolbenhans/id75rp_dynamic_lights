@@ -1,6 +1,9 @@
 # QMK / Vial firmware source for the YMDK ID75 ortholinear keyboard (RP2040).
 
 This fork adds dynamic keycode-based RGB lighting with automatic color assignment based on the current keymap configuration. Unlike traditional per-key RGB setups, key colors follow the assigned keycodes and update automatically when keys are remapped through Vial.
+Example:
+[![Dynamic Lighting Demo](https://img.youtube.com/vi/74F3iRf9jFE/maxresdefault.jpg)](https://www.youtube.com/watch?v=74F3iRf9jFE)
+
 
 Features:
 - Dynamic keycode-aware RGB lighting
