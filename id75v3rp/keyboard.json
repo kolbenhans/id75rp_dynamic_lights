@@ -1,7 +1,7 @@
 {
-  "keyboard_name": "ID75v3rp",
-  "maintainer": "tao heihei",
-  "manufacturer": "THH",
+  "keyboard_name": "ID75",
+  "maintainer": "Kolbenhans - Stickyfinger",
+  "manufacturer": "YMDK",
   "processor": "RP2040",
   "bootloader": "rp2040",
   "usb": {

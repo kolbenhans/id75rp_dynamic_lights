@@ -30,3 +30,43 @@ Keyboard USB current with all leds on at full brightness is 0,85A. Keyboard USB 
 ## Changes
 - info.json renamed to keyboard.json to avoid this Warning: ymdk/id75v3rp: Build marker "keyboard.json" not found.
 - Moved LAYOUT macro definition from id75*.h to info.json/keyboard.json to remove compilation Error: ymdk/id75v3rp: LAYOUT_ortho_5x15: Layout macro should not be defined within ".h" files. [See](https://github.com/qmk/qmk_firmware/issues/18486)
+
+## Forked by Kolbenhans
+
+Forked from:
+- https://github.com/mgsg/id75rp
+
+### keyboard.json
+- Changed `manufacturer` to `YMDK`
+- Changed `maintainer` to `Kolbenhans`
+
+### keymaps/vial
+#### dynamic lighting
+- Added `dynamic_lights.c`
+- Added `dynamic_lights.h`
+- Added dynamic keycode-aware RGB lighting that automatically adapts to the current key layout
+
+#### keymap.c
+- Removed the original Caps Lock indicator
+- Added dynamic lighting integration
+
+#### rules.mk
+- Added dynamic lighting source files
+
+### Layer configuration
+#### keymaps/vial/keymap.c
+- Added an additional layer (Layer 4)
+
+#### config.h
+- Changed `DYNAMIC_KEYMAP_LAYER_COUNT` from `4` to `5`
+
+#### keymaps/vial/config.h
+- Changed `DYNAMIC_KEYMAP_LAYER_COUNT` from `4` to `5`
+
+### RGB configuration
+#### keymaps/vial/config.h
+- Added:
+  ```c
+  #define RGB_MATRIX_TIMEOUT 300000
+  ```
+- Automatically turns off keyboard lighting after 5 minutes of inactivity

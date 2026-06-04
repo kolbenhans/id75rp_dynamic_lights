@@ -1,3 +1,4 @@
+SRC += dynamic_lights.c
 BOOTLOADER = rp2040
 
 VIA_ENABLE = yes
