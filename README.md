@@ -4,6 +4,8 @@ This fork adds dynamic keycode-based RGB lighting with automatic color assignmen
 Example:
 [![Dynamic Lighting Demo](https://img.youtube.com/vi/74F3iRf9jFE/maxresdefault.jpg)](https://www.youtube.com/watch?v=74F3iRf9jFE)
 
+Feature Demo of audio visualizer
+[![Audio Visualizer Demo](https://img.youtube.com/vi/4OLN6erbn6I/maxresdefault.jpg)](https://youtu.be/4OLN6erbn6I)
 
 Features:
 - Dynamic keycode-aware RGB lighting

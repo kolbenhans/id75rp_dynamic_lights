@@ -1,5 +1,12 @@
 #include QMK_KEYBOARD_H
 #include "dynamic_lights.h"
+#include "audio_visualizer.h"
+
+#define KEYBIND_USER06 0x7E06
+#define KEYBIND_USER07 0x7E07
+#define KEYBIND_USER08 0x7E08
+#define KEYBIND_USER09 0x7E09
+#define KEYBIND_USER10 0x7E0A
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
@@ -36,7 +43,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   ),
 
 [4] = LAYOUT_ortho_5x15(
-    KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,
+    KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KEYBIND_USER06, KEYBIND_USER07, KEYBIND_USER08, KEYBIND_USER09, KEYBIND_USER10,
     KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,
     KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,
     KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,
@@ -44,3 +51,43 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
   ),
 };
 
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    switch (keycode) {
+        case KEYBIND_USER06:
+            if (record->event.pressed) {
+                uprintf("USER06 pressed -> custom lighting mode\n");
+                rgb_matrix_mode(RGB_MATRIX_CUSTOM_custom_lighting);
+            }
+            return false;
+
+        case KEYBIND_USER07:
+            if (record->event.pressed) {
+                uprintf("USER07 pressed -> audio visualizer mode\n");
+                rgb_matrix_mode(RGB_MATRIX_CUSTOM_audio_visualizer);
+            }
+            return false;
+
+        case KEYBIND_USER08:
+            if (record->event.pressed) {
+                audio_visualizer_toggle_underglow();
+                uprintf("USER08 pressed -> toggle visualizer underglow\n");
+            }
+            return false;
+
+        case KEYBIND_USER09:
+            if (record->event.pressed) {
+                audio_visualizer_next_mode();
+                uprintf("USER09 pressed -> next visualizer palette\n");
+            }
+            return false;
+
+        case KEYBIND_USER10:
+            if (record->event.pressed) {
+                audio_visualizer_next_render_mode();
+                uprintf("USER10 pressed -> next render mode\n");
+            }
+            return false;
+    }
+
+    return true;
+}

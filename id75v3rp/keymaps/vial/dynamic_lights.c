@@ -2,7 +2,6 @@
 #include "dynamic_lights.h"
 
 #if defined(RGB_MATRIX_ENABLE)
-
 // -----------------------------------------------------------------------------
 // Hardware constants
 // -----------------------------------------------------------------------------
@@ -16,7 +15,7 @@
 // -----------------------------------------------------------------------------
 
 #define STARTUP_DELAY_MS       1000
-#define STARTUP_STEP_MS        50
+#define STARTUP_STEP_MS        30
 #define STARTUP_SWITCH_STEP_MS 25
 #define STARTUP_TAIL           7
 
@@ -40,7 +39,8 @@
 #define L_RANGE(a, b) (((1UL << ((b) - (a) + 1)) - 1) << (a))
 
 // Replacing Direct Control with our key -> color effect.
-#define MY_CUSTOM_RGB_MODE 45
+//#define MY_CUSTOM_RGB_MODE 45
+#define RGB_MODE_CUSTOM_LIGHTING RGB_MATRIX_CUSTOM_custom_lighting
 
 // -----------------------------------------------------------------------------
 // Color palette
@@ -524,22 +524,33 @@ static void startup_tick(uint8_t led_min, uint8_t led_max) {
 // -----------------------------------------------------------------------------
 
 void keyboard_post_init_user(void) {
+
     startup.delay_timer = timer_read32();
+    startup.anim_timer  = 0;
+    startup.done        = false;
+    startup.from_mode_switch = false;
+
+    cache_invalidate();
 }
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     uint8_t current_mode = rgb_matrix_get_mode();
 
-    if (current_mode != MY_CUSTOM_RGB_MODE) {
+    if (current_mode != RGB_MODE_CUSTOM_LIGHTING) {
         last_rgb_mode = current_mode;
+
+        startup.done = false;
+        startup.anim_timer = 0;
+        startup.from_mode_switch = false;
+
         return false;
     }
 
-    if (last_rgb_mode != MY_CUSTOM_RGB_MODE && last_rgb_mode != 0) {
-        startup = (typeof(startup)){
-            .delay_timer      = timer_read32(),
-            .from_mode_switch = true,
-        };
+    if (last_rgb_mode != RGB_MODE_CUSTOM_LIGHTING) {
+        startup.delay_timer = timer_read32();
+        startup.anim_timer  = 0;
+        startup.done        = false;
+        startup.from_mode_switch = last_rgb_mode != 0;
 
         cache_invalidate();
     }
@@ -557,11 +568,11 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
             startup.anim_timer = timer_read32();
         }
 
-        startup_tick(led_min, led_max);
+        startup_tick(0, KEY_LED_COUNT);
         return false;
     }
 
-    render_lighting(led_min, led_max);
+    render_lighting(0, KEY_LED_COUNT);
     return false;
 }
 
