@@ -1,12 +1,20 @@
 import argparse
 from pathlib import Path
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from hid_helper import open_raw_hid, hid_write
 
 import numpy as np
 from PIL import Image
 
 
 PALETTE_SIZE = 5
-
+PACKET_SIZE = 32
+PACKET_COMMAND = 0x02
+PACKET_SUBCOMMAND_PALETTE = 0xA2
 
 def load_image(path):
     return Image.open(path).convert("RGB")
@@ -140,6 +148,35 @@ def print_palette(palette):
         r, g, b = [int(v) for v in color]
         print(f"{i}: ({r:3}, {g:3}, {b:3})  #{r:02X}{g:02X}{b:02X}")
 
+def send_palette_hid(palette):
+    packet = build_palette_packet(palette)
+
+    dev = open_raw_hid()
+
+    try:
+        hid_write(dev, packet)
+    finally:
+        dev.close()
+
+def build_palette_packet(palette):
+    packet = bytearray(PACKET_SIZE)
+
+    packet[0] = PACKET_COMMAND
+    packet[1] = PACKET_SUBCOMMAND_PALETTE
+    packet[2] = len(palette)
+
+    offset = 3
+
+    for color in palette:
+        r, g, b = [int(v) for v in color]
+
+        packet[offset + 0] = r
+        packet[offset + 1] = g
+        packet[offset + 2] = b
+
+        offset += 3
+
+    return bytes(packet)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -152,6 +189,18 @@ def main():
         help="Path to an image file",
     )
 
+    parser.add_argument(
+        "--send",
+        action="store_true",
+        help="Send palette to keyboard via HID",
+    )
+
+    parser.add_argument(
+        "--show-packet",
+        action="store_true",
+        help="Print HID packet bytes",
+    )
+
     args = parser.parse_args()
 
     image = load_image(args.image)
@@ -161,6 +210,17 @@ def main():
     palette = extract_palette(pixels)
     print_palette(palette)
 
+    packet = build_palette_packet(palette)
+
+    if args.show_packet:
+        print("\nHID packet:")
+        print(" ".join(f"{byte:02X}" for byte in packet))
+
+    if args.send:
+        send_palette_hid(palette)
+        print("\nPalette sent via HID.")
+    else:
+        print("\nDry run only. Use --send to upload palette.")
 
 if __name__ == "__main__":
     main()
