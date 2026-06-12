@@ -38,8 +38,7 @@
 #define L(n)          LAYER_MASK(n)
 #define L_RANGE(a, b) (((1UL << ((b) - (a) + 1)) - 1) << (a))
 
-// Replacing Direct Control with our key -> color effect.
-//#define MY_CUSTOM_RGB_MODE 45
+// Dedicated RGB Matrix effect used for Dynamic Lighting.
 #define RGB_MODE_CUSTOM_LIGHTING RGB_MATRIX_CUSTOM_custom_lighting
 
 // -----------------------------------------------------------------------------
