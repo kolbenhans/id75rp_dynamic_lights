@@ -28,7 +28,7 @@
 
 #ifdef RGB_MATRIX_ENABLE
 /* The pin connected to the data pin of the LEDs */
-#define RGB_MATRIX_MAXIMUM_BRIGHTNESS 200
+#define RGB_MATRIX_MAXIMUM_BRIGHTNESS 180
 #define RGB_MATRIX_STARTUP_VAL RGB_MATRIX_MAXIMUM_BRIGHTNESS * 3/4
 // Want backlighting and RGB Matrix patterns? See the note in the readme,
 // apply the patches, and then uncomment the line below as well as the ones

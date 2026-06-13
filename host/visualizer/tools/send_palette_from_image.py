@@ -139,7 +139,14 @@ def extract_palette(pixels, count=PALETTE_SIZE):
     while len(selected) < count:
         selected.append(np.array([80, 80, 80], dtype=np.uint8))
 
-    return np.array(selected[:count], dtype=np.uint8)
+    selected = np.array(selected[:count], dtype=np.uint8)
+
+    selected = np.array(
+        [correct_for_keyboard_leds(c) for c in selected],
+        dtype=np.uint8,
+    )
+
+    return selected
 
 def print_palette(palette):
     print("Detected palette:\n")
@@ -177,6 +184,39 @@ def build_palette_packet(palette):
         offset += 3
 
     return bytes(packet)
+
+def correct_for_keyboard_leds(color, gamma=1.2):
+    r, g, b = [int(v) for v in color]
+
+    r = int(((r / 255.0) ** gamma) * 255)
+    g = int(((g / 255.0) ** gamma) * 255)
+    b = int(((b / 255.0) ** gamma) * 255)
+
+    return np.array([r, g, b], dtype=np.uint8)
+
+def correct_for_keyboard_leds2(color):
+    r, g, b = [int(v) for v in color]
+
+    # Reduce green dominance
+    g = int(g * 0.65)
+
+    # Slightly boost red/blue for nicer purple/cyan colors
+    r = int(r * 1.10)
+    b = int(b * 1.15)
+
+    # Clamp
+    r = min(255, r)
+    g = min(255, g)
+    b = min(255, b)
+
+    return np.array([r, g, b], dtype=np.uint8)
+
+def hex_to_rgb(hex_str):
+    # Remove leading hash if present
+    cleaned_hex = hex_str.lstrip('#')
+    
+    # Slice into pairs and convert from base 16 to integers
+    return tuple(int(cleaned_hex[i:i+2], 16) for i in (0, 2, 4))
 
 def main():
     parser = argparse.ArgumentParser(

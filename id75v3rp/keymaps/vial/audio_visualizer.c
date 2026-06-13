@@ -15,9 +15,31 @@ static bool visualizer_underglow_enabled = false;
 static uint8_t visualizer_mode = 0;
 static uint8_t visualizer_render_mode = 0;
 
+static visualizer_palette_t palette_uploaded = {
+    .peak_r = 255, .peak_g = 255, .peak_b = 255,
+
+    .level_r = {255,   0,   0, 255, 255},
+    .level_g = {  0, 255,   0, 255,   0},
+    .level_b = {  0,   0, 255,   0, 255},
+
+    .underglow_r = 255,
+    .underglow_g = 0,
+    .underglow_b = 0,
+};
+
+static uint8_t mix_u8(uint8_t a, uint8_t b, uint8_t amount) {
+    return a + (((int16_t)b - a) * amount) / 255;
+}
+
+static void set_uploaded_level(uint8_t level, uint8_t r, uint8_t g, uint8_t b) {
+    palette_uploaded.level_r[level] = r;
+    palette_uploaded.level_g[level] = g;
+    palette_uploaded.level_b[level] = b;
+}
+
 void audio_visualizer_next_mode(void) {
     visualizer_mode++;
-    visualizer_mode %= 4;
+    visualizer_mode %= 5;
 }
 
 void audio_visualizer_next_render_mode(void) {
@@ -58,12 +80,13 @@ static void visualizer_sync_handler(uint8_t in_size, const void *in_data,
         ((const uint8_t *)in_data) + VISUALIZER_BAND_COUNT,
         VISUALIZER_BAND_COUNT
     );
+
     visualizer_underglow_enabled =
         (((const uint8_t *)in_data)[VISUALIZER_BAND_COUNT * 2] != 0);
 
     visualizer_mode =
         ((const uint8_t *)in_data)[(VISUALIZER_BAND_COUNT * 2) + 1];
-    
+
     visualizer_render_mode =
         ((const uint8_t *)in_data)[(VISUALIZER_BAND_COUNT * 2) + 2];
 
@@ -97,7 +120,6 @@ void audio_visualizer_sync_to_slave(void) {
         USER_SYNC_VISUALIZER,
         VISUALIZER_SYNC_SIZE,
         visualizer_sync_data
-
     );
 }
 #else
@@ -105,7 +127,6 @@ void audio_visualizer_register_rpc(void) {}
 void audio_visualizer_sync_to_slave(void) {}
 #endif
 
-// WinAmp Mode
 static const visualizer_palette_t palette_winamp = {
     .peak_r = 255, .peak_g = 255, .peak_b = 255,
 
@@ -117,7 +138,7 @@ static const visualizer_palette_t palette_winamp = {
     .underglow_g = 90,
     .underglow_b = 0,
 };
-//Purple rain
+
 static const visualizer_palette_t palette_purple = {
     .peak_r = 255, .peak_g = 60, .peak_b = 0,
 
@@ -129,7 +150,7 @@ static const visualizer_palette_t palette_purple = {
     .underglow_g = 0,
     .underglow_b = 153,
 };
-// Ice Queen
+
 static const visualizer_palette_t palette_ice = {
     .peak_r = 255, .peak_g = 255, .peak_b = 255,
 
@@ -141,7 +162,7 @@ static const visualizer_palette_t palette_ice = {
     .underglow_g = 80,
     .underglow_b = 255,
 };
-// Fire Bird
+
 static const visualizer_palette_t palette_fire = {
     .peak_r = 255, .peak_g = 255, .peak_b = 255,
 
@@ -153,7 +174,7 @@ static const visualizer_palette_t palette_fire = {
     .underglow_g = 0,
     .underglow_b = 0,
 };
-//Color Getter
+
 const visualizer_palette_t *audio_visualizer_get_palette(void) {
     switch (visualizer_mode) {
         default:
@@ -161,6 +182,7 @@ const visualizer_palette_t *audio_visualizer_get_palette(void) {
         case 1: return &palette_purple;
         case 2: return &palette_ice;
         case 3: return &palette_fire;
+        case 4: return &palette_uploaded;
     }
 }
 
@@ -186,22 +208,59 @@ void raw_hid_receive_kb(uint8_t *data, uint8_t length) {
         // uprintf("RAW KB len=%u cmd=%u sub=%u\n", length, data[0], data[1]);
     }
 
-    if (length < 26) return;
+    if (length < 2) return;
     if (data[0] != 0x02) return;
-    if (data[1] != 0xA1) return;
 
-    for (uint8_t i = 0; i < VISUALIZER_BAND_COUNT; i++) {
-        visualizer_bands[i] = data[i + 2];
-        visualizer_peaks[i] = data[i + 2 + VISUALIZER_BAND_COUNT];
-    }
+    switch (data[1]) {
+        case 0xA1:
+            if (length < 26) return;
 
-    visualizer_active = true;
+            for (uint8_t i = 0; i < VISUALIZER_BAND_COUNT; i++) {
+                visualizer_bands[i] = data[i + 2];
+                visualizer_peaks[i] = data[i + 2 + VISUALIZER_BAND_COUNT];
+            }
 
-    static uint32_t visualizer_sync_timer = 0;
+            visualizer_active = true;
 
-    if (timer_elapsed32(visualizer_sync_timer) > 50) {
-        visualizer_sync_timer = timer_read32();
-        audio_visualizer_sync_to_slave();
+            static uint32_t visualizer_sync_timer = 0;
+
+            if (timer_elapsed32(visualizer_sync_timer) > 50) {
+                visualizer_sync_timer = timer_read32();
+                audio_visualizer_sync_to_slave();
+            }
+
+            break;
+
+        case 0xA2:
+            if (length < 18) return;
+
+            uint8_t r0 = data[12];
+            uint8_t g0 = data[13];
+            uint8_t b0 = data[14];
+
+            uint8_t r1 = data[9];
+            uint8_t g1 = data[10];
+            uint8_t b1 = data[11];
+
+            uint8_t r2 = data[3];
+            uint8_t g2 = data[4];
+            uint8_t b2 = data[5];
+
+            set_uploaded_level(0, r0, g0, b0);
+            set_uploaded_level(1, mix_u8(r0, r1, 128), mix_u8(g0, g1, 128), mix_u8(b0, b1, 128));
+            set_uploaded_level(2, r1, g1, b1);
+            set_uploaded_level(3, mix_u8(r1, r2, 128), mix_u8(g1, g2, 128), mix_u8(b1, b2, 128));
+            set_uploaded_level(4, r2, g2, b2);
+
+            palette_uploaded.underglow_r = r0;
+            palette_uploaded.underglow_g = g0;
+            palette_uploaded.underglow_b = b0;
+
+            palette_uploaded.peak_r = 255;
+            palette_uploaded.peak_g = 255;
+            palette_uploaded.peak_b = 255;
+
+            break;
     }
 }
 

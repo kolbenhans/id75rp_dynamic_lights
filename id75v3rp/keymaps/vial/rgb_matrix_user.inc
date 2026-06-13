@@ -6,16 +6,15 @@ RGB_MATRIX_EFFECT(audio_visualizer)
 #include "audio_visualizer.h"
 
 #define VISUALIZER_BRIGHTNESS_LIMIT 150
-#define WATERDROP_COUNT 3
-#define WATERDROP_SPEED 3
-#define WATERDROP_WIDTH 16
-// #define WATERDROP_DECAY 18
-#define WATERDROP_BASS_THRESHOLD 194 
-#define WATERDROP_RETRIGGER_GAP 8
-#define WATERDROP_MAX_RADIUS 150
+#define WATERDROP_COUNT 6 //6
+#define WATERDROP_SPEED 6
+#define WATERDROP_BASS_THRESHOLD 187
+#define WATERDROP_RETRIGGER_GAP 3  //8
+#define WATERDROP_MAX_RADIUS 260
 
 typedef struct {
-    uint8_t radius;
+    uint16_t radius;
+    uint8_t age;
     bool active;
     uint8_t color_index;
 } waterdrop_t;
@@ -24,7 +23,7 @@ static waterdrop_t waterdrops[WATERDROP_COUNT] = {0};
 static uint8_t waterdrop_next_color = 0;
 static uint8_t waterdrop_cooldown = 0;
 
-static const uint8_t waterdrop_colors[3] = { 0, 2, 4 };
+static const uint8_t waterdrop_colors[5] = { 0, 1, 2, 3, 4 };
 
 static uint8_t vis_scale(uint8_t value) {
     return ((uint16_t)value * VISUALIZER_BRIGHTNESS_LIMIT) / 255;
@@ -74,11 +73,12 @@ static void render_visualizer_waterdrop_mode(const visualizer_palette_t *palette
         for (uint8_t i = 0; i < WATERDROP_COUNT; i++) {
             if (!waterdrops[i].active) {
                 waterdrops[i].radius = 0;
+                waterdrops[i].age = 255;
                 waterdrops[i].active = true;
                 waterdrops[i].color_index = waterdrop_next_color;
 
                 waterdrop_next_color++;
-                waterdrop_next_color %= 3;
+                waterdrop_next_color %= 5;
 
                 waterdrop_cooldown = WATERDROP_RETRIGGER_GAP;
                 break;
@@ -110,7 +110,7 @@ static void render_visualizer_waterdrop_mode(const visualizer_palette_t *palette
 #endif
 
         uint8_t dy = absdiff_u8(y, center_y);
-        uint8_t dist = dx + dy;
+        uint8_t dist = sqrt16((uint16_t)dx * dx + (uint16_t)dy * dy);
 
         uint8_t r = 0;
         uint8_t g = 0;
@@ -119,15 +119,63 @@ static void render_visualizer_waterdrop_mode(const visualizer_palette_t *palette
         for (uint8_t i = 0; i < WATERDROP_COUNT; i++) {
             if (!waterdrops[i].active) continue;
 
-            uint8_t radius = waterdrops[i].radius;
-            uint8_t delta = absdiff_u8(dist, radius);
+            uint16_t effect = waterdrops[i].radius - dist;
+            if (effect > 255) effect = 255;
 
-            if (delta <= WATERDROP_WIDTH) {
-                uint8_t color = waterdrop_colors[waterdrops[i].color_index];
+            uint8_t brightness = 255 - effect;
 
-                r = qadd8(r, vis_scale(palette->level_r[color]));
-                g = qadd8(g, vis_scale(palette->level_g[color]));
-                b = qadd8(b, vis_scale(palette->level_b[color]));
+            if (brightness > 0) {
+                uint8_t delta = absdiff_u8(dist, waterdrops[i].radius);
+
+                uint8_t color;
+
+                if (delta < 12) {
+                    color = 4;
+                } else if (delta < 28) {
+                    color = 3;
+                } else if (delta < 44) {
+                    color = 2;
+                } else if (delta < 64) {
+                    color = 1;
+                } else {
+                    color = 0;
+                }
+
+                uint8_t fade = 255;
+
+                if (delta > 0) {
+                    fade = qsub8(255, delta * 4);
+                }
+
+                uint8_t final_brightness =
+                    scale8(brightness, fade);
+
+                final_brightness =
+                    scale8(final_brightness, waterdrops[i].age);
+
+                r = qadd8(
+                    r,
+                    scale8(
+                        vis_scale(palette->level_r[color]),
+                        final_brightness
+                    )
+                );
+
+                g = qadd8(
+                    g,
+                    scale8(
+                        vis_scale(palette->level_g[color]),
+                        final_brightness
+                    )
+                );
+
+                b = qadd8(
+                    b,
+                    scale8(
+                        vis_scale(palette->level_b[color]),
+                        final_brightness
+                    )
+                );
             }
         }
 
@@ -139,7 +187,9 @@ static void render_visualizer_waterdrop_mode(const visualizer_palette_t *palette
 
         waterdrops[i].radius += WATERDROP_SPEED;
 
-        if (waterdrops[i].radius > WATERDROP_MAX_RADIUS) {
+        if (waterdrops[i].age > 8) {
+            waterdrops[i].age -= 8;
+        } else {
             waterdrops[i].active = false;
         }
     }
@@ -155,11 +205,9 @@ static bool visualizer_level_is_active(uint8_t render_mode, uint8_t level, uint8
     switch (render_mode) {
         default:
         case 0:
-            // Bar mode
             return level < height;
 
         case 1:
-            // Dot mode
             return level == height - 1;
     }
 }
@@ -353,7 +401,7 @@ static bool audio_visualizer(effect_params_t *params) {
     if (!audio_visualizer_is_active()) {
         return false;
     }
-    
+
     uint8_t render_mode =
         audio_visualizer_get_render_mode();
 
@@ -370,40 +418,39 @@ static bool audio_visualizer(effect_params_t *params) {
         render_visualizer_geometry_bars_mode(palette, render_mode);
     }
 
-    #ifdef SPLIT_KEYBOARD
-        if (audio_visualizer_underglow_enabled()) {
-            // Bass underglow meter
-            static const uint8_t bass_left[]  = { 1, 2, 3, 4, 5, 6 };
-            static const uint8_t bass_right[] = { 37, 38, 39, 40, 41, 42 };
+#ifdef SPLIT_KEYBOARD
+    if (audio_visualizer_underglow_enabled()) {
+        static const uint8_t bass_left[]  = { 1, 2, 3, 4, 5, 6 };
+        static const uint8_t bass_right[] = { 37, 38, 39, 40, 41, 42 };
 
-            uint8_t bass0 = audio_visualizer_get_band(0);
-            uint8_t bass1 = audio_visualizer_get_band(1);
-            uint8_t bass  = bass0 > bass1 ? bass0 : bass1;
+        uint8_t bass0 = audio_visualizer_get_band(0);
+        uint8_t bass1 = audio_visualizer_get_band(1);
+        uint8_t bass  = bass0 > bass1 ? bass0 : bass1;
 
-            if (bass < 25) {
-                bass = 0;
-            }
-
-            uint8_t brightness = ((uint16_t)bass * bass) / 255;
-
-            uint8_t r = ((uint16_t)palette->underglow_r * brightness) / 255;
-            uint8_t g = ((uint16_t)palette->underglow_g * brightness) / 255;
-            uint8_t b = ((uint16_t)palette->underglow_b * brightness) / 255;
-
-            for (uint8_t i = 0; i < 6; i++) {
-                rgb_matrix_set_color(bass_left[i],  vis_scale(r), vis_scale(g), vis_scale(b));
-                rgb_matrix_set_color(bass_right[i], vis_scale(r), vis_scale(g), vis_scale(b));
-            }
-        } else {
-            static const uint8_t bass_left[]  = { 1, 2, 3, 4, 5, 6 };
-            static const uint8_t bass_right[] = { 37, 38, 39, 40, 41, 42 };
-
-            for (uint8_t i = 0; i < 6; i++) {
-                rgb_matrix_set_color(bass_left[i],  0, 0, 0);
-                rgb_matrix_set_color(bass_right[i], 0, 0, 0);
-            }
+        if (bass < 25) {
+            bass = 0;
         }
-    #endif
+
+        uint8_t brightness = ((uint16_t)bass * bass) / 255;
+
+        uint8_t r = ((uint16_t)palette->underglow_r * brightness) / 255;
+        uint8_t g = ((uint16_t)palette->underglow_g * brightness) / 255;
+        uint8_t b = ((uint16_t)palette->underglow_b * brightness) / 255;
+
+        for (uint8_t i = 0; i < 6; i++) {
+            rgb_matrix_set_color(bass_left[i],  vis_scale(r), vis_scale(g), vis_scale(b));
+            rgb_matrix_set_color(bass_right[i], vis_scale(r), vis_scale(g), vis_scale(b));
+        }
+    } else {
+        static const uint8_t bass_left[]  = { 1, 2, 3, 4, 5, 6 };
+        static const uint8_t bass_right[] = { 37, 38, 39, 40, 41, 42 };
+
+        for (uint8_t i = 0; i < 6; i++) {
+            rgb_matrix_set_color(bass_left[i],  0, 0, 0);
+            rgb_matrix_set_color(bass_right[i], 0, 0, 0);
+        }
+    }
+#endif
 
     return false;
 }

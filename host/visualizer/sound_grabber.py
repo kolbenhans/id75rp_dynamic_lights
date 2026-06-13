@@ -22,7 +22,7 @@ ENABLE_DECAY = True
 DECAY = 15
 
 # Peak marker behavior
-PEAK_DECAY = 3
+PEAK_DECAY = 5
 PEAK_HOLD_FRAMES = 16
 ENABLE_PEAK_HOLD = False
 
