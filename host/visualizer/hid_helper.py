@@ -1,8 +1,17 @@
 import hid
+import re
 
 USAGE_PAGE = 65376
 USAGE = 97
 
+def device_search_text(device):
+    parts = [
+        device.get("manufacturer_string") or "",
+        device.get("product_string") or "",
+        str(device.get("path") or ""),
+    ]
+
+    return " ".join(parts)
 
 def find_raw_hid_devices():
     devices = []
@@ -13,10 +22,37 @@ def find_raw_hid_devices():
 
     return devices
 
-
-def select_device(devices):
+def select_device(devices, selector=None):
     if not devices:
         raise RuntimeError("No compatible Raw HID device found")
+
+    if selector:
+        if selector.isdigit():
+            index = int(selector)
+
+            if 0 <= index < len(devices):
+                return devices[index]
+
+            raise RuntimeError(f"Raw HID device index out of range: {selector}")
+
+        pattern = re.compile(selector, re.IGNORECASE)
+
+    if selector:
+        pattern = re.compile(selector, re.IGNORECASE)
+
+        matches = [
+            d for d in devices
+            if pattern.search(device_search_text(d))
+        ]
+
+        if len(matches) == 1:
+            return matches[0]
+
+        if len(matches) > 1:
+            print(f"Multiple Raw HID devices match selector '{selector}':\n")
+            devices = matches
+        else:
+            raise RuntimeError(f"No Raw HID device matches selector: {selector}")
 
     if len(devices) == 1:
         return devices[0]
@@ -46,8 +82,8 @@ def select_device(devices):
         print("Invalid selection")
 
 
-def open_raw_hid():
-    device_info = select_device(find_raw_hid_devices())
+def open_raw_hid(selector=None):
+    device_info = select_device(find_raw_hid_devices(), selector=selector)
     path = device_info["path"]
 
     if hasattr(hid, "device"):

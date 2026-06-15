@@ -3,6 +3,7 @@ import subprocess
 import time
 from hid_helper import open_raw_hid, hid_write
 import numpy as np
+import argparse
 
 # HID protocol
 PACKET_SIZE = 32
@@ -206,6 +207,19 @@ class WindowsLoopbackCapture:
             self.ctx.__exit__(None, None, None)
 
 def main():
+
+    parser = argparse.ArgumentParser(
+        description="Send audio visualizer data to keyboard via Raw HID.",
+    )
+
+    parser.add_argument(
+        "--select",
+        type=str,
+        help="Raw HID device index or regex",
+    )
+
+    args = parser.parse_args()
+
     proc = None
     dev = None
 
@@ -215,7 +229,7 @@ def main():
         MONITOR = get_default_monitor()
         print("using monitor", MONITOR)
 
-    dev = open_raw_hid()
+    dev = open_raw_hid(selector=args.select)
     proc = start_audio_capture(MONITOR)
 
     try:
