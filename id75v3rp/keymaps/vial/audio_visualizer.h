@@ -36,3 +36,7 @@ void audio_visualizer_next_render_mode(void);
 uint8_t audio_visualizer_get_render_mode(void);
 
 const visualizer_palette_t *audio_visualizer_get_palette(void);
+void audio_visualizer_start_entry_wave(void);
+bool audio_visualizer_entry_wave_running(void);
+uint32_t audio_visualizer_entry_wave_elapsed(void);
+void audio_visualizer_stop_entry_wave(void);

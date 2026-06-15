@@ -37,6 +37,27 @@ static void set_uploaded_level(uint8_t level, uint8_t r, uint8_t g, uint8_t b) {
     palette_uploaded.level_b[level] = b;
 }
 
+static bool audio_entry_wave_running = false;
+static uint32_t audio_entry_wave_timer = 0;
+
+void audio_visualizer_start_entry_wave(void) {
+    uprintf("ENTRY WAVE START\n");
+    audio_entry_wave_running = true;
+    audio_entry_wave_timer = timer_read32();
+}
+
+bool audio_visualizer_entry_wave_running(void) {
+    return audio_entry_wave_running;
+}
+
+uint32_t audio_visualizer_entry_wave_elapsed(void) {
+    return timer_elapsed32(audio_entry_wave_timer);
+}
+
+void audio_visualizer_stop_entry_wave(void) {
+    audio_entry_wave_running = false;
+}
+
 void audio_visualizer_next_mode(void) {
     visualizer_mode++;
     visualizer_mode %= 5;

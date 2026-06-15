@@ -11,6 +11,10 @@ RGB_MATRIX_EFFECT(audio_visualizer)
 #define WATERDROP_BASS_THRESHOLD 187
 #define WATERDROP_RETRIGGER_GAP 3  //8
 #define WATERDROP_MAX_RADIUS 260
+#define AUDIO_ENTRY_WAVE_DURATION_MS ((15 + AUDIO_ENTRY_WAVE_WIDTH) * AUDIO_ENTRY_WAVE_STEP_MS)
+#define AUDIO_ENTRY_WAVE_STEP_MS     35
+#define AUDIO_ENTRY_WAVE_WIDTH       5
+#define AUDIO_ENTRY_WAVE_HEIGHT      4
 
 typedef struct {
     uint16_t radius;
@@ -397,7 +401,62 @@ static void render_visualizer_geometry_kitt_mode(const visualizer_palette_t *pal
     }
 }
 
+static bool render_audio_entry_wave(void) {
+    if (!audio_visualizer_entry_wave_running()) {
+        return false;
+    }
+
+    uint32_t elapsed = audio_visualizer_entry_wave_elapsed();
+
+    if (elapsed > AUDIO_ENTRY_WAVE_DURATION_MS) {
+        audio_visualizer_stop_entry_wave();
+        return false;
+    }
+
+    int16_t head_col = elapsed / AUDIO_ENTRY_WAVE_STEP_MS;
+
+    for (uint8_t led = 0; led < DRIVER_LED_TOTAL; led++) {
+        rgb_matrix_set_color(led, 0, 0, 0);
+    }
+
+    for (uint8_t row = 0; row < 5; row++) {
+        for (uint8_t col = 0; col < 15; col++) {
+            int16_t distance = head_col - col;
+
+            if (distance < 0 || distance >= AUDIO_ENTRY_WAVE_WIDTH) {
+                continue;
+            }
+
+            uint8_t height = AUDIO_ENTRY_WAVE_HEIGHT - distance;
+
+            if (row < 5 - height) {
+                continue;
+            }
+
+            uint8_t inverted_row = 4 - row;
+            uint8_t inverted_col = 14 - col;
+            uint8_t led = (inverted_row * 15) + inverted_col;
+
+            if (led >= DRIVER_LED_TOTAL) {
+                continue;
+            }
+
+            uint8_t hue = 128 + (col * 8) + (row * 18);
+            RGB rgb = hsv_to_rgb((HSV){ hue, 255, 255 });
+
+            rgb_matrix_set_color(led, rgb.r, rgb.g, rgb.b);
+        }
+    }
+
+    return true;
+}
+
 static bool audio_visualizer(effect_params_t *params) {
+
+    if (render_audio_entry_wave()) {
+        return false;
+    }
+
     if (!audio_visualizer_is_active()) {
         return false;
     }
