@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import sys
 from pathlib import Path
+import re
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -15,6 +16,34 @@ PALETTE_SIZE = 5
 PACKET_SIZE = 32
 PACKET_COMMAND = 0x02
 PACKET_SUBCOMMAND_PALETTE = 0xA2
+
+# Wallpaper integration
+#
+# The implementation below is specific to Caelestia Shell on Hyprland.
+# It reads the currently active wallpaper path from Caelestia's state file.
+#
+# Other desktop environments can implement their own wallpaper provider.
+# For example:
+#   - Windows: Registry or SystemParametersInfoW()
+#   - KDE Plasma: wallpaper configuration files / DBus
+#   - GNOME: gsettings
+#
+# The only requirement is returning a valid image path.
+CAELESTIA_WALLPAPER_PATH = Path(
+    "~/.local/state/caelestia/wallpaper/path.txt"
+).expanduser()
+
+def get_current_wallpaper():
+    if CAELESTIA_WALLPAPER_PATH.exists():
+        path = Path(CAELESTIA_WALLPAPER_PATH.read_text().strip()).expanduser()
+
+        if path.exists():
+            return path
+
+        raise RuntimeError(f"Wallpaper path does not exist: {path}")
+
+    raise RuntimeError("No supported current-wallpaper source found")
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
 
 def load_image(path):
     return Image.open(path).convert("RGB")
@@ -52,7 +81,7 @@ def quantize_pixels(pixels, step=32):
     return (pixels // step) * step
 
 
-def extract_palette(pixels, count=PALETTE_SIZE):
+def extract_palette(pixels, count=PALETTE_SIZE, gamma=2.2, apply_correction=True):
     quantized = quantize_pixels(pixels, step=16)
 
     colors, counts = np.unique(
@@ -128,6 +157,10 @@ def extract_palette(pixels, count=PALETTE_SIZE):
 
         color = colors[idx]
 
+        if not selected:
+            selected.append(color)
+            continue
+
         distances = [
             np.linalg.norm(color.astype(np.int16) - c.astype(np.int16))
             for c in selected
@@ -141,10 +174,11 @@ def extract_palette(pixels, count=PALETTE_SIZE):
 
     selected = np.array(selected[:count], dtype=np.uint8)
 
-    selected = np.array(
-        [correct_for_keyboard_leds(c) for c in selected],
-        dtype=np.uint8,
-    )
+    if apply_correction:
+        selected = np.array(
+            [correct_for_keyboard_leds(c, gamma=gamma) for c in selected],
+            dtype=np.uint8,
+        )
 
     return selected
 
@@ -155,10 +189,10 @@ def print_palette(palette):
         r, g, b = [int(v) for v in color]
         print(f"{i}: ({r:3}, {g:3}, {b:3})  #{r:02X}{g:02X}{b:02X}")
 
-def send_palette_hid(palette):
+def send_palette_hid(palette, selector=None):
     packet = build_palette_packet(palette)
 
-    dev = open_raw_hid()
+    dev = open_raw_hid(selector=selector)
 
     try:
         hid_write(dev, packet)
@@ -185,12 +219,16 @@ def build_palette_packet(palette):
 
     return bytes(packet)
 
-def correct_for_keyboard_leds(color, gamma=1.2):
+def correct_for_keyboard_leds(color, gamma=1.2, brightness=1.35):
     r, g, b = [int(v) for v in color]
 
-    r = int(((r / 255.0) ** gamma) * 255)
-    g = int(((g / 255.0) ** gamma) * 255)
-    b = int(((b / 255.0) ** gamma) * 255)
+    r = ((r / 255.0) ** gamma) * 255
+    g = ((g / 255.0) ** gamma) * 255
+    b = ((b / 255.0) ** gamma) * 255
+
+    r = min(255, int(r * brightness))
+    g = min(255, int(g * brightness))
+    b = min(255, int(b * brightness))
 
     return np.array([r, g, b], dtype=np.uint8)
 
@@ -220,13 +258,20 @@ def hex_to_rgb(hex_str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Extract a visualizer palette from an image.",
+        description="Extract and optionally send a keyboard visualizer palette from an image.",
     )
 
     parser.add_argument(
         "image",
+        nargs="?",
         type=Path,
         help="Path to an image file",
+    )
+
+    parser.add_argument(
+        "--current-wallpaper",
+        action="store_true",
+        help="Use current wallpaper from supported desktop integrations",
     )
 
     parser.add_argument(
@@ -241,13 +286,45 @@ def main():
         help="Print HID packet bytes",
     )
 
+    parser.add_argument(
+        "--gamma",
+        type=float,
+        default=2.2,
+        help="Gamma correction for keyboard LEDs",
+    )
+
+    parser.add_argument(
+        "--no-correction",
+        action="store_true",
+        help="Disable keyboard LED correction",
+    )
+
+    parser.add_argument(
+        "--select",
+        type=str,
+        help="Automatically select Raw HID device matching this regex",
+    )
+
     args = parser.parse_args()
 
-    image = load_image(args.image)
+    if args.current_wallpaper:
+        image_path = get_current_wallpaper()
+        print(f"Using current wallpaper: {image_path}\n")
+    elif args.image is not None:
+        image_path = args.image
+    else:
+        parser.error("Please provide an image path or use --current-wallpaper")
+
+    image = load_image(image_path)
     pixels = image_to_pixels(image)
     pixels = filter_pixels(pixels)
 
-    palette = extract_palette(pixels)
+    palette = extract_palette(
+        pixels,
+        gamma=args.gamma,
+        apply_correction=not args.no_correction,
+    )
+
     print_palette(palette)
 
     packet = build_palette_packet(palette)
@@ -257,7 +334,7 @@ def main():
         print(" ".join(f"{byte:02X}" for byte in packet))
 
     if args.send:
-        send_palette_hid(palette)
+        send_palette_hid(palette, selector=args.select)
         print("\nPalette sent via HID.")
     else:
         print("\nDry run only. Use --send to upload palette.")
