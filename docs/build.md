@@ -4,31 +4,44 @@ This document describes how to build the firmware and integrate the keyboard sou
 
 ## Table of Contents
 
+* [Platform](#platform)
 * [Verified Setup](#verified-setup)
-* [Requirements](#requirements)
-* [Clone this Repository](#clone-this-repository)
-* [Clone vial-qmk](#clone-vial-qmk)
-* [Link the Keyboard Source](#link-the-keyboard-source)
-* [Build Firmware](#build-firmware)
-* [Build and Flash Directly](#build-and-flash-directly)
+* [Directory Layout](#directory-layout)
+* [Step 1 — Clone vial-qmk](#step-1--clone-vial-qmk)
+* [Step 2 — Clone this repository](#step-2--clone-this-repository)
+* [Step 3 — Link the keyboard source](#step-3--link-the-keyboard-source)
+* [Step 4 — Build firmware](#step-4--build-firmware)
 * [Dynamic Lighting](#dynamic-lighting)
 * [Audio Visualizer](#audio-visualizer)
 * [Notes](#notes)
 * [Related Documentation](#related-documentation)
 
+---
+
+## Platform
+
+All shell commands in this guide use bash syntax.
+
+| Platform | Recommended environment |
+|---|---|
+| Linux | Standard terminal |
+| macOS | Standard terminal |
+| Windows | [QMK MSYS](https://msys.qmk.fm/) or WSL (Windows Subsystem for Linux) |
+
+In **QMK MSYS** and **WSL**, all commands in this guide work as written.  
+Native Windows Command Prompt and PowerShell alternatives are noted where they differ.
+
+---
+
 ## Verified Setup
 
-Repository:
-
-`id75rp_dynamic_lights`
+Repository: `id75rp_dynamic_lights`
 
 Tested with:
 
-* `vial-kb/vial-qmk`
-* Standard `vial` branch
+* `vial-kb/vial-qmk`, standard `vial` branch
 * RP2040 / UF2 bootloader
-* RGB Matrix
-* Vial
+* RGB Matrix, Vial
 
 Verified:
 
@@ -45,42 +58,57 @@ Verified:
 
 ---
 
-## Requirements
+## Directory Layout
 
-This repository is intended to be built inside a working `vial-qmk` checkout.
+This guide uses the following structure. You can choose any base directory — just replace `~/projects` with your preferred path consistently throughout.
 
-The keyboard source is linked into the Vial tree via a symbolic link.
-
----
-
-## Clone this Repository
-
-```bash
-git clone git@github.com:kolbenhans/id75rp_dynamic_lights.git
-cd id75rp_dynamic_lights
+```
+~/projects/
+├── vial-qmk/               ← vial-qmk checkout
+└── id75rp_dynamic_lights/  ← this repository
 ```
 
 ---
 
-## Clone vial-qmk
+## Step 1 — Clone vial-qmk
 
 ```bash
 git clone https://github.com/vial-kb/vial-qmk ~/projects/vial-qmk
 cd ~/projects/vial-qmk
-
 git submodule update --init --recursive --depth 1
 ```
 
 ---
 
-## Link the Keyboard Source
+## Step 2 — Clone this repository
 
 ```bash
-ln -s /path/to/id75rp_dynamic_lights/id75v3rp \
+git clone git@github.com:kolbenhans/id75rp_dynamic_lights.git ~/projects/id75rp_dynamic_lights
+```
+
+---
+
+## Step 3 — Link the keyboard source into vial-qmk
+
+**Linux / macOS / QMK MSYS / WSL:**
+
+```bash
+ln -s ~/projects/id75rp_dynamic_lights/id75v3rp \
       ~/projects/vial-qmk/keyboards/ymdk/id75v3rp
 ```
 
-Verify:
+**Windows (Command Prompt, without QMK MSYS):**
+
+```cmd
+mklink /D "%USERPROFILE%\projects\vial-qmk\keyboards\ymdk\id75v3rp" ^
+          "%USERPROFILE%\projects\id75rp_dynamic_lights\id75v3rp"
+```
+
+> [!NOTE]
+> `mklink /D` requires administrator privileges on Windows.  
+> Using QMK MSYS avoids this — `ln -s` works there without elevation.
+
+Verify the link:
 
 ```bash
 ls -ld ~/projects/vial-qmk/keyboards/ymdk/id75v3rp
@@ -88,30 +116,26 @@ ls -ld ~/projects/vial-qmk/keyboards/ymdk/id75v3rp
 
 ---
 
-## Build Firmware
+## Step 4 — Build firmware
 
 ```bash
 cd ~/projects/vial-qmk
-
 qmk clean
 qmk compile -kb ymdk/id75v3rp -km vial
 ```
 
 Output:
 
-```text
+```
 .build/ymdk_id75v3rp_vial.uf2
 ```
 
----
+### Build and flash directly
 
-## Build and Flash Directly
-
-If the keyboard is already in bootloader mode, the firmware can be built and flashed in a single step:
+If the keyboard is already in bootloader mode:
 
 ```bash
 cd ~/projects/vial-qmk
-
 qmk clean
 qmk flash -kb ymdk/id75v3rp -km vial
 ```
@@ -133,7 +157,7 @@ Features:
 
 Activated through:
 
-```text
+```
 USER06
 ```
 
@@ -154,7 +178,7 @@ Features:
 
 Activated through:
 
-```text
+```
 USER07
 ```
 
