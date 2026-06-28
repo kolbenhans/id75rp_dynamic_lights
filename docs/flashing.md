@@ -14,18 +14,33 @@
 
 ## Linux: USB Device Permissions
 
-On Linux, udev rules are required to access the keyboard in bootloader mode without `sudo`.
+On Linux, two udev rules are required: one for bootloader access, one for Raw HID access (audio visualizer / palette tools).
 
-This is a one-time setup:
+### Bootloader access
 
 ```bash
 sudo cp ~/projects/vial-qmk/util/udev/50-qmk.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules
-sudo udevadm trigger
 ```
 
 > [!NOTE]
 > Adjust the path to match your actual `vial-qmk` location if it differs from `~/projects/vial-qmk`.
+
+### Raw HID access (YMDK ID75)
+
+The standard QMK rules use `GROUP="plugdev"` which does not exist on Arch-based systems. A dedicated rule with `MODE="0666"` is required:
+
+```bash
+echo 'KERNEL=="hidraw*", ATTRS{idVendor}=="6964", ATTRS{idProduct}=="0075", MODE="0666"' | sudo tee /etc/udev/rules.d/99-ymdk-id75.rules
+```
+
+### Apply rules
+
+```bash
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+Reconnect the keyboard after applying the rules.
 
 ---
 
