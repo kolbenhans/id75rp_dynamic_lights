@@ -2,12 +2,30 @@
 
 ## Table of Contents
 
+* [Linux: USB Device Permissions](#linux-usb-device-permissions)
 * [Build Firmware](#build-firmware)
 * [Flash Firmware](#flash-firmware)
 * [Entering Bootloader Mode](#entering-bootloader-mode)
 * [Recovery Recommendations](#recovery-recommendations)
 * [Verification Checklist](#verification-checklist)
 * [Related Documentation](#related-documentation)
+
+---
+
+## Linux: USB Device Permissions
+
+On Linux, udev rules are required to access the keyboard in bootloader mode without `sudo`.
+
+This is a one-time setup:
+
+```bash
+sudo cp ~/projects/vial-qmk/util/udev/50-qmk.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+> [!NOTE]
+> Adjust the path to match your actual `vial-qmk` location if it differs from `~/projects/vial-qmk`.
 
 ---
 
