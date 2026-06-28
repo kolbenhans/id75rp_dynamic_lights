@@ -1,8 +1,6 @@
 import argparse
 from pathlib import Path
 import sys
-from pathlib import Path
-import re
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -43,14 +41,12 @@ def get_current_wallpaper():
         raise RuntimeError(f"Wallpaper path does not exist: {path}")
 
     raise RuntimeError("No supported current-wallpaper source found")
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### 
 
 def load_image(path):
     return Image.open(path).convert("RGB")
 
 
 def image_to_pixels(image, size=120):
-    image = image.copy()
     image.thumbnail((size, size))
 
     pixels = np.asarray(image, dtype=np.uint8).reshape(-1, 3)
@@ -219,7 +215,7 @@ def build_palette_packet(palette):
 
     return bytes(packet)
 
-def correct_for_keyboard_leds(color, gamma=1.2, brightness=1.35):
+def correct_for_keyboard_leds(color, gamma=2.2, brightness=1.35):
     r, g, b = [int(v) for v in color]
 
     r = ((r / 255.0) ** gamma) * 255
@@ -231,30 +227,6 @@ def correct_for_keyboard_leds(color, gamma=1.2, brightness=1.35):
     b = min(255, int(b * brightness))
 
     return np.array([r, g, b], dtype=np.uint8)
-
-def correct_for_keyboard_leds2(color):
-    r, g, b = [int(v) for v in color]
-
-    # Reduce green dominance
-    g = int(g * 0.65)
-
-    # Slightly boost red/blue for nicer purple/cyan colors
-    r = int(r * 1.10)
-    b = int(b * 1.15)
-
-    # Clamp
-    r = min(255, r)
-    g = min(255, g)
-    b = min(255, b)
-
-    return np.array([r, g, b], dtype=np.uint8)
-
-def hex_to_rgb(hex_str):
-    # Remove leading hash if present
-    cleaned_hex = hex_str.lstrip('#')
-    
-    # Slice into pairs and convert from base 16 to integers
-    return tuple(int(cleaned_hex[i:i+2], 16) for i in (0, 2, 4))
 
 def main():
     parser = argparse.ArgumentParser(
