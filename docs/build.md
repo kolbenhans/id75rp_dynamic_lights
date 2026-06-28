@@ -33,6 +33,24 @@ Native Windows Command Prompt and PowerShell alternatives are noted where they d
 
 ---
 
+## Prerequisites
+
+| Tool | Linux / macOS | Windows |
+|---|---|---|
+| git | Package manager | [QMK MSYS](https://msys.qmk.fm/) (included) |
+| QMK CLI | `pip install qmk` | [QMK MSYS](https://msys.qmk.fm/) (included) |
+| Build toolchain | See [QMK Getting Started](https://docs.qmk.fm/newbs_getting_started) | [QMK MSYS](https://msys.qmk.fm/) (included) |
+
+**Windows:** Install [QMK MSYS](https://msys.qmk.fm/). It includes git, the QMK CLI, and the complete build toolchain. No additional installation needed.
+
+**Linux / macOS:** Install the QMK CLI, then follow the [QMK Getting Started guide](https://docs.qmk.fm/newbs_getting_started) to install the build toolchain for your distribution.
+
+```bash
+pip install qmk
+```
+
+---
+
 ## Verified Setup
 
 Repository: `id75rp_dynamic_lights`
@@ -73,7 +91,7 @@ This guide uses the following structure. You can choose any base directory — j
 ## Step 1 — Clone vial-qmk
 
 ```bash
-git clone https://github.com/vial-kb/vial-qmk ~/projects/vial-qmk
+git clone --depth 1 https://github.com/vial-kb/vial-qmk ~/projects/vial-qmk
 cd ~/projects/vial-qmk
 git submodule update --init --recursive --depth 1
 ```
@@ -83,7 +101,7 @@ git submodule update --init --recursive --depth 1
 ## Step 2 — Clone this repository
 
 ```bash
-git clone git@github.com:kolbenhans/id75rp_dynamic_lights.git ~/projects/id75rp_dynamic_lights
+git clone https://github.com/kolbenhans/id75rp_dynamic_lights.git ~/projects/id75rp_dynamic_lights
 ```
 
 ---
