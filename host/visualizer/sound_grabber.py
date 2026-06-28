@@ -1,9 +1,9 @@
+import argparse
 import os
 import subprocess
 import time
 from hid_helper import open_raw_hid, hid_write
 import numpy as np
-import argparse
 
 # HID protocol
 PACKET_SIZE = 32
@@ -163,6 +163,27 @@ def build_packet(levels, peaks):
 
     return packet
 
+def open_hid(selector=None):
+    while True:
+        try:
+            return open_raw_hid(selector=selector)
+        except Exception as e:
+            print("waiting for HID:", e)
+            time.sleep(1)
+
+def write_packet(dev, packet, selector=None):
+    try:
+        hid_write(dev, packet)
+        return dev
+    except Exception as e:
+        print("HID write failed:", e)
+        try:
+            dev.close()
+        except Exception:
+            pass
+        time.sleep(0.5)
+        return open_hid(selector=selector)
+
 def start_windows_audio_capture():
     import soundcard as sc
 
@@ -207,17 +228,14 @@ class WindowsLoopbackCapture:
             self.ctx.__exit__(None, None, None)
 
 def main():
-
     parser = argparse.ArgumentParser(
         description="Send audio visualizer data to keyboard via Raw HID.",
     )
-
     parser.add_argument(
         "--select",
         type=str,
         help="Raw HID device index or regex",
     )
-
     args = parser.parse_args()
 
     proc = None
@@ -229,7 +247,7 @@ def main():
         MONITOR = get_default_monitor()
         print("using monitor", MONITOR)
 
-    dev = open_raw_hid(selector=args.select)
+    dev = open_hid(selector=args.select)
     proc = start_audio_capture(MONITOR)
 
     try:
@@ -239,9 +257,7 @@ def main():
                 continue
 
             values_np = calculate_band_values(samples)
-
             raw_bands = normalize_bands(values_np)
-
             display = apply_decay(raw_bands)
             peaks_display = update_peak_hold()
 
@@ -249,27 +265,15 @@ def main():
             peaks  = [min(255, int(v)) for v in peaks_display]
 
             packet = build_packet(levels, peaks)
-            try:
-                hid_write(dev, packet)
-            except Exception as e:
-                print("HID write failed:", e)
-                try:
-                    dev.close()
-                except Exception:
-                    pass
-
-                time.sleep(0.5)
-                dev = open_raw_hid()
+            dev = write_packet(dev, packet, selector=args.select)
 
     except KeyboardInterrupt:
         pass
     finally:
         if proc is not None:
             proc.terminate()
-
         if dev is not None:
             dev.close()
 
-# # # # # # # # 
 if __name__ == "__main__":
     main()

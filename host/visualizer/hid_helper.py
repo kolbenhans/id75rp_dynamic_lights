@@ -35,8 +35,6 @@ def select_device(devices, selector=None):
 
             raise RuntimeError(f"Raw HID device index out of range: {selector}")
 
-        pattern = re.compile(selector, re.IGNORECASE)
-
     if selector:
         pattern = re.compile(selector, re.IGNORECASE)
 
